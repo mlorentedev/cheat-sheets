@@ -94,3 +94,64 @@
 | `docker volume prune` | Delete all volumes (not referenced by any container) |
 | `docker run --rm --volumes-from <container> -v $(pwd):/backup busybox tar cvfz /backup/backup.tar.gz <container-path>` | Backup a container |
 | `docker run --rm --volumes-from <container> -v $(pwd):/backup busybox sh -c "cd <container-path> && tar xvfz /backup/backup.tar.gz --strip 1"` | Restore a container from backup |
+
+## Networks
+
+| COMMAND | DESCRIPTION |
+| --- | --- |
+| `docker network ls` | List all networks |
+| `docker network create <network>` | Create a network |
+| `docker network connect <network> <container>` | Connect container to network |
+| `docker network disconnect <network> <container>` | Disconnect container from network |
+| `docker network inspect <network>` | Show network information |
+| `docker network rm <network>` | Delete network |
+| `docker run --network=<network> <image>` | Run container on specific network |
+
+## Dockerfile Best Practices
+
+| COMMAND | DESCRIPTION |
+| --- | --- |
+| `docker build -t <image>:tag .` | Build image from Dockerfile |
+| `docker build --no-cache -t <image> .` | Build without using cache |
+| `docker build -f <dockerfile> -t <image> .` | Build with specific Dockerfile |
+| `docker build --build-arg VAR=value -t <image> .` | Build with build arguments |
+| `docker buildx build --platform linux/amd64,linux/arm64 -t <image> .` | Multi-platform build |
+
+## Container Stats and Monitoring
+
+| COMMAND | DESCRIPTION |
+| --- | --- |
+| `docker stats` | Show live resource usage statistics |
+| `docker stats <container>` | Show stats for specific container |
+| `docker events` | Show real-time events |
+| `docker system df` | Show docker disk usage |
+| `docker system events` | Monitor docker daemon events |
+
+## Registry Operations
+
+| COMMAND | DESCRIPTION |
+| --- | --- |
+| `docker tag <image> <registry>/<image>:<tag>` | Tag image for registry |
+| `docker push <registry>/<image>:<tag>` | Push image to custom registry |
+| `docker pull <registry>/<image>:<tag>` | Pull from custom registry |
+| `docker logout <registry>` | Logout from specific registry |
+
+## Docker Compose Integration
+
+| COMMAND | DESCRIPTION |
+| --- | --- |
+| `docker-compose up` | Start services defined in docker-compose.yml |
+| `docker-compose up -d` | Start services in detached mode |
+| `docker-compose down` | Stop and remove services |
+| `docker-compose logs` | View logs from all services |
+| `docker-compose ps` | List running services |
+| `docker-compose exec <service> <command>` | Execute command in service |
+
+## Useful One-Liners
+
+| COMMAND | DESCRIPTION |
+| --- | --- |
+| `docker run -it --rm alpine sh` | Quick Alpine Linux container |
+| `docker run -it --rm -v $(pwd):/app -w /app node npm install` | Run npm install in current directory |
+| `docker run --rm -v $(pwd):/app -w /app node:alpine npm test` | Run tests without installing Node locally |
+| `docker exec -it $(docker ps -q -l) bash` | Connect to most recent container |
