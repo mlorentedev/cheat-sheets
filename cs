@@ -84,26 +84,20 @@ init_index() {
     # Create empty index
     : > "$INDEX_FILE"
 
-    # Process markdown files (simple, no nested loops)
+    # Simple approach: use find -exec for each file
     find "$CS_ROOT" -name "*.md" -type f \
         ! -path "*/.git/*" \
         ! -path "*/node_modules/*" \
         ! -path "*/personal/*" \
         2>/dev/null \
-        -print0 | while IFS= read -r -d '' mdfile; do
-
-        local relpath="${mdfile#$CS_ROOT/}"
-
-        # Index table commands (sed in one pass)
-        grep -E '^\|[[:space:]]*`' "$mdfile" 2>/dev/null | \
-            sed -E "s|^\|[[:space:]]*\`([^\`]+)\`[^|]*\|[[:space:]]*([^|]+)\|.*|\1|\2|${relpath}|" \
-            >> "$INDEX_FILE" 2>/dev/null || true
-
-        # Index code blocks (awk with variable)
-        awk -v file="$relpath" \
-            '/```bash/,/```/ {if (!/```/ && !/^#/ && NF>0) print $0 "||" file}' \
-            "$mdfile" >> "$INDEX_FILE" 2>/dev/null || true
-    done
+        -exec sh -c '
+            f="$1";  idx="$2"; root="$3"
+            rel="${f#$root/}"
+            # Tables with backticks (match backtick after pipe and spaces)
+            grep "|.*\`" "$f" 2>/dev/null | sed "s/|[[:space:]]*\`\\([^\`]*\\)\`.*|[[:space:]]*\\([^|]*\\)|.*/\\1|\\2|$rel/" >> "$idx" || true
+            # Code blocks
+            awk "/\`\`\`bash/,/\`\`\`/" "$f" 2>/dev/null | grep -v "\`\`\`" | grep -v "^#" | grep -v "^$" | sed "s|^|&||$rel|" | sed "s/||/||/" >> "$idx" || true
+        ' _ {} "$INDEX_FILE" "$CS_ROOT" \;
 
     local count=$(wc -l < "$INDEX_FILE" 2>/dev/null || echo "0")
     print_success "Index built with $count entries"
