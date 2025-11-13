@@ -80,26 +80,34 @@ timestamp() {
 # Initialize index
 init_index() {
     print_info "Building search index..."
-    > "$INDEX_FILE"
 
-    # Index all markdown files
-    find "$CS_ROOT" -name "*.md" -type f ! -path "*/.git/*" ! -path "*/node_modules/*" | while read -r file; do
-        # Extract commands and descriptions
-        grep -E '^\|[[:space:]]*`' "$file" 2>/dev/null | while read -r line; do
-            cmd=$(echo "$line" | sed -E 's/^\|[[:space:]]*`([^`]+)`.*$/\1/')
-            desc=$(echo "$line" | sed -E 's/^[^|]*\|[^|]*\|[[:space:]]*(.+)[[:space:]]*\|$/\1/')
-            rel_file="${file#$CS_ROOT/}"
-            echo "${cmd}|${desc}|${rel_file}" >> "$INDEX_FILE"
-        done
+    # Create empty index
+    : > "$INDEX_FILE"
 
-        # Also index code blocks
-        awk '/```bash/,/```/ {if (!/```/) print}' "$file" 2>/dev/null | grep -v '^#' | grep -v '^$' | while read -r cmd; do
-            rel_file="${file#$CS_ROOT/}"
-            echo "${cmd}||${rel_file}" >> "$INDEX_FILE"
-        done
+    # Process markdown files (simple, no nested loops)
+    find "$CS_ROOT" -name "*.md" -type f \
+        ! -path "*/.git/*" \
+        ! -path "*/node_modules/*" \
+        ! -path "*/personal/*" \
+        2>/dev/null \
+        -print0 | while IFS= read -r -d '' mdfile; do
+
+        local relpath="${mdfile#$CS_ROOT/}"
+
+        # Index table commands (sed in one pass)
+        grep -E '^\|[[:space:]]*`' "$mdfile" 2>/dev/null | \
+            sed -E "s|^\|[[:space:]]*\`([^\`]+)\`[^|]*\|[[:space:]]*([^|]+)\|.*|\1|\2|${relpath}|" \
+            >> "$INDEX_FILE" 2>/dev/null || true
+
+        # Index code blocks (awk with variable)
+        awk -v file="$relpath" \
+            '/```bash/,/```/ {if (!/```/ && !/^#/ && NF>0) print $0 "||" file}' \
+            "$mdfile" >> "$INDEX_FILE" 2>/dev/null || true
     done
 
-    print_success "Index built with $(wc -l < "$INDEX_FILE") entries"
+    local count=$(wc -l < "$INDEX_FILE" 2>/dev/null || echo "0")
+    print_success "Index built with $count entries"
+    return 0
 }
 
 # Search commands
@@ -172,10 +180,12 @@ EOF
     print_success "Added to quick captures: $QUICK_ADD_FILE"
 
     # Rebuild index
-    init_index >/dev/null 2>&1
+    init_index >/dev/null 2>&1 || true
 
     # Auto-sync if enabled
-    [[ "$AUTO_SYNC" == "true" ]] && git_sync
+    [[ "$AUTO_SYNC" == "true" ]] && git_sync || true
+
+    return 0
 }
 
 # Standard add with metadata
@@ -246,10 +256,12 @@ EOF
     print_success "Added to: $file"
 
     # Rebuild index
-    init_index >/dev/null 2>&1
+    init_index >/dev/null 2>&1 || true
 
     # Auto-sync if enabled
-    [[ "$AUTO_SYNC" == "true" ]] && git_sync
+    [[ "$AUTO_SYNC" == "true" ]] && git_sync || true
+
+    return 0
 }
 
 # Interactive add
@@ -474,12 +486,14 @@ EOF
     if has_command "${EDITOR:-nano}"; then
         read -p "Open in editor? [Y/n]: " open_editor
         if [[ "${open_editor:-Y}" =~ ^[Yy]$ ]]; then
-            ${EDITOR:-nano} "$file"
+            ${EDITOR:-nano} "$file" || true
         fi
     fi
 
     # Update index
-    init_index >/dev/null 2>&1
+    init_index >/dev/null 2>&1 || true
+
+    return 0
 }
 
 # Git sync
@@ -533,6 +547,8 @@ show_stats() {
         echo -e "${BOLD}Recent Activity:${NC}"
         echo -e "  Quick captures today: $recent"
     fi
+
+    return 0
 }
 
 # List all categories
@@ -548,10 +564,12 @@ list_categories() {
             find "$dir" -name "*.md" -type f | while read -r file; do
                 local name=$(basename "$file" .md)
                 echo -e "  • $name"
-            done
+            done || true
             echo
         fi
     done
+
+    return 0
 }
 
 # Browse with fzf
@@ -564,13 +582,15 @@ browse() {
     # Ensure index exists
     [[ ! -f "$INDEX_FILE" ]] && init_index
 
-    # Interactive browser
+    # Interactive browser (don't fail if user cancels)
     cat "$INDEX_FILE" | fzf --delimiter='|' \
         --preview 'bat --color=always --style=numbers {3} 2>/dev/null || cat {3}' \
         --preview-window=right:60%:wrap \
         --header="Browse all commands (Ctrl-C to exit)" \
         --with-nth=1,2 \
-        --bind 'enter:execute(less {3})+abort'
+        --bind 'enter:execute(less {3})+abort' || true
+
+    return 0
 }
 
 # Show help
