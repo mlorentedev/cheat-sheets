@@ -1,0 +1,17 @@
+# CheatSheets Configuration
+# Copy this file to .cs.config and customize
+
+# Editor for opening files (uses $EDITOR by default)
+EDITOR=${EDITOR:-nano}
+
+# Auto-sync with git after changes
+AUTO_SYNC=false
+
+# Default category for new commands
+DEFAULT_CATEGORY=personal
+
+# Where quick adds go
+QUICK_ADD_FILE="${PERSONAL_DIR}/quick.md"
+
+# Threshold for auto-capture (commands used N+ times)
+CAPTURE_THRESHOLD=3
