@@ -18,16 +18,10 @@ jobs:
     - name: Set up environment
       run: |
         echo "CS_ROOT=$GITHUB_WORKSPACE" >> $GITHUB_ENV
-        chmod +x cs install.sh
+        chmod +x cs install.sh test.sh
 
-    - name: Install dependencies
+    - name: Install shellcheck
       run: |
-        # Install fzf for interactive features
-        git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-        ~/.fzf/install --all --no-update-rc --no-bash --no-zsh
-        export PATH="$HOME/.fzf/bin:$PATH"
-
-        # Install shellcheck for shell script validation
         sudo apt-get update
         sudo apt-get install -y shellcheck
 
@@ -51,19 +45,6 @@ jobs:
         echo "Testing cs help..."
         ./cs help
         echo "✓ Help command works"
-
-    - name: Test cs index command
-      run: |
-        echo "Testing cs index..."
-        ./cs index
-        echo "✓ Index built successfully"
-
-        # Verify index was created
-        if [ ! -f .cs_index ]; then
-          echo "✗ Index file not created"
-          exit 1
-        fi
-        echo "✓ Index file created"
 
     - name: Test cs quick command
       run: |
@@ -90,19 +71,6 @@ jobs:
 
         echo "✓ Quick add works"
 
-    - name: Test cs add command
-      run: |
-        echo "Testing cs add with metadata..."
-        ./cs add "docker ps -a" --desc "List all containers" --tags docker,containers --cat tools/docker
-
-        # Verify command was added to docker.md
-        if ! grep -q "docker ps -a" tools/docker.md; then
-          echo "✗ Command not added to docker.md"
-          exit 1
-        fi
-
-        echo "✓ Standard add works"
-
     - name: Test cs search command
       run: |
         echo "Testing cs search..."
@@ -114,39 +82,6 @@ jobs:
         echo "Testing cs list..."
         ./cs list
         echo "✓ List command works"
-
-    - name: Test cs stats command
-      run: |
-        echo "Testing cs stats..."
-        ./cs stats
-        echo "✓ Stats command works"
-
-    - name: Test cs new command
-      run: |
-        echo "Testing cs new with tool template..."
-        ./cs new test-tool --template tool < /dev/null || true
-
-        # Verify file was created
-        if [ ! -f tools/test-tool.md ]; then
-          echo "✗ New section not created"
-          exit 1
-        fi
-
-        echo "✓ New section creation works"
-
-    - name: Test template files
-      run: |
-        echo "Validating templates..."
-
-        # Check templates exist
-        for template in tool k8s simple; do
-          if [ ! -f "templates/${template}.md" ]; then
-            echo "✗ Template ${template}.md not found"
-            exit 1
-          fi
-        done
-
-        echo "✓ All templates present"
 
     - name: Validate markdown files
       run: |
@@ -167,43 +102,10 @@ jobs:
 
         echo "✓ Markdown files validated"
 
-    - name: Test search index content
+    - name: Run test suite
       run: |
-        echo "Validating search index..."
-
-        # Rebuild index
-        ./cs index
-
-        # Check index has content
-        if [ ! -s .cs_index ]; then
-          echo "✗ Index is empty"
-          exit 1
-        fi
-
-        line_count=$(wc -l < .cs_index)
-        echo "Index contains $line_count entries"
-
-        if [ "$line_count" -lt 10 ]; then
-          echo "✗ Index has too few entries"
-          exit 1
-        fi
-
-        echo "✓ Search index validated"
-
-    - name: Test configuration file
-      run: |
-        echo "Testing configuration..."
-
-        # Check example config exists
-        if [ ! -f .cs.config.example ]; then
-          echo "✗ Example config not found"
-          exit 1
-        fi
-
-        # Verify it's valid bash
-        bash -n .cs.config.example
-
-        echo "✓ Configuration file validated"
+        echo "Running full test suite..."
+        ./test.sh
 
     - name: Summary
       run: |
@@ -216,15 +118,9 @@ jobs:
         echo "  ✓ Installation script"
         echo "  ✓ Shell script syntax"
         echo "  ✓ cs help"
-        echo "  ✓ cs index"
         echo "  ✓ cs quick"
-        echo "  ✓ cs add"
         echo "  ✓ cs search"
         echo "  ✓ cs list"
-        echo "  ✓ cs stats"
-        echo "  ✓ cs new"
-        echo "  ✓ Templates"
         echo "  ✓ Markdown files"
-        echo "  ✓ Search index"
-        echo "  ✓ Configuration"
+        echo "  ✓ Full test suite (10 tests)"
         echo ""
