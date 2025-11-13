@@ -84,20 +84,53 @@ init_index() {
     # Create empty index
     : > "$INDEX_FILE"
 
-    # Simple approach: use find -exec for each file
+    # Create a simple indexer script to avoid escaping issues
+    local indexer="${CACHE_DIR}/indexer.sh"
+    mkdir -p "$CACHE_DIR"
+
+    cat > "$indexer" <<'INDEXER_EOF'
+#!/bin/sh
+mdfile="$1"
+index="$2"
+root="$3"
+relpath="${mdfile#$root/}"
+
+# Extract table rows with backticks - use awk for single pass
+awk -F'|' -v file="$relpath" '
+/\|.*`.*\|/ {
+    cmd = $2
+    desc = $3
+    gsub(/`/, "", cmd)
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", cmd)
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", desc)
+    if (cmd != "" && cmd != "COMMAND" && cmd != "---") {
+        print cmd "|" desc "|" file
+    }
+}
+' "$mdfile" >> "$index" 2>/dev/null
+
+# Extract code blocks
+awk -v file="$relpath" '
+/```bash/,/```/ {
+    if (!/```/ && !/^#/ && NF>0) {
+        print $0 "||" file
+    }
+}
+' "$mdfile" >> "$index" 2>/dev/null
+INDEXER_EOF
+
+    chmod +x "$indexer"
+
+    # Process each markdown file
     find "$CS_ROOT" -name "*.md" -type f \
         ! -path "*/.git/*" \
         ! -path "*/node_modules/*" \
         ! -path "*/personal/*" \
         2>/dev/null \
-        -exec sh -c '
-            f="$1";  idx="$2"; root="$3"
-            rel="${f#$root/}"
-            # Tables with backticks (match backtick after pipe and spaces)
-            grep "|.*\`" "$f" 2>/dev/null | sed "s/|[[:space:]]*\`\\([^\`]*\\)\`.*|[[:space:]]*\\([^|]*\\)|.*/\\1|\\2|$rel/" >> "$idx" || true
-            # Code blocks
-            awk "/\`\`\`bash/,/\`\`\`/" "$f" 2>/dev/null | grep -v "\`\`\`" | grep -v "^#" | grep -v "^$" | sed "s|^|&||$rel|" | sed "s/||/||/" >> "$idx" || true
-        ' _ {} "$INDEX_FILE" "$CS_ROOT" \;
+        -exec "$indexer" {} "$INDEX_FILE" "$CS_ROOT" \;
+
+    # Cleanup
+    rm -f "$indexer"
 
     local count=$(wc -l < "$INDEX_FILE" 2>/dev/null || echo "0")
     print_success "Index built with $count entries"
