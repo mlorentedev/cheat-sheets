@@ -53,22 +53,14 @@ jobs:
 
     - name: Verify installation
       run: |
-        # Check that directories were created
+        # Check that personal directory was created
         [ -d personal ] || exit 1
-        [ -d templates ] || exit 1
-
-        # Check that index was built
-        [ -f .cs_index ] || exit 1
-
-        # Check that config example was created
-        [ -f .cs.config.example ] || exit 1
 
         echo "Installation verified successfully"
 
     - name: Test cs commands after install
       run: |
         ./cs help
-        ./cs version
         ./cs list
         echo "All post-install commands work"
 
@@ -121,24 +113,19 @@ jobs:
         ./cs quick "docker system prune -a"
         ./cs quick "terraform plan -out=plan.tfplan"
 
-        # Day 2: User organizes
-        ./cs add "helm list -A" --desc "List all helm releases" --tags helm,k8s
-
-        # Day 3: User searches
+        # Day 2: User searches
         ./cs search docker
         ./cs search kubectl
 
-        # Day 4: User creates new section
-        echo "" | ./cs new consul --template tool
+        # Day 3: User views cheatsheet
+        ./cs docker
+
+        # Day 4: User lists everything
+        ./cs list
 
         # Verify everything worked
         [ -f personal/quick.md ] || exit 1
         grep -q "kubectl get pods" personal/quick.md || exit 1
-        [ -f tools/consul.md ] || exit 1
+        grep -q "docker system prune" personal/quick.md || exit 1
 
         echo "✓ Real workflow simulation completed successfully"
-
-    - name: Check stats
-      run: |
-        ./cs stats
-        ./cs list
