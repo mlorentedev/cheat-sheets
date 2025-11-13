@@ -1,2 +1,12 @@
 **/.vscode
 **/.env
+
+# CheatSheets personal files and cache
+personal/
+.cs.config
+.cs_index
+.cs_cache/
+
+# Backup files
+*.tar.gz
+cs-backup-*.tar.gz

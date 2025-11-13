@@ -64,3 +64,4 @@
 | --- | --- |
 | `terraform login` | Login to Terraform Cloud with an API token |
 | `terraform logout` | Logout from Terraform Cloud |
+| `terraform plan -out=plan.tfplan` | Create execution plan [Tags: terraform,plan] |
