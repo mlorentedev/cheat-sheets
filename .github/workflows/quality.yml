@@ -1,0 +1,243 @@
+name: Quality Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  markdown-lint:
+    name: Markdown Linting
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install markdownlint
+      run: |
+        npm install -g markdownlint-cli
+
+    - name: Run markdownlint
+      run: |
+        # Create markdownlint config
+        cat > .markdownlint.json <<EOF
+        {
+          "default": true,
+          "MD013": false,
+          "MD033": false,
+          "MD041": false
+        }
+        EOF
+
+        # Lint markdown files (don't fail on warnings)
+        markdownlint '**/*.md' --ignore node_modules --ignore personal || true
+        echo "✓ Markdown linting completed"
+
+  shellcheck:
+    name: Shell Script Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install shellcheck
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y shellcheck
+
+    - name: Run shellcheck on cs
+      run: |
+        echo "Checking cs script..."
+        shellcheck cs -e SC2181 -e SC2162 || echo "Warnings found (non-blocking)"
+
+    - name: Run shellcheck on install.sh
+      run: |
+        echo "Checking install.sh script..."
+        shellcheck install.sh -e SC2181 -e SC2162 || echo "Warnings found (non-blocking)"
+
+    - name: Verify script syntax
+      run: |
+        bash -n cs
+        bash -n install.sh
+        echo "✓ All shell scripts have valid syntax"
+
+  file-structure:
+    name: Validate File Structure
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Check required files
+      run: |
+        echo "Checking required files..."
+
+        required_files=(
+          "README.md"
+          "LICENSE"
+          "cs"
+          "install.sh"
+          ".cs.config.example"
+          ".gitignore"
+        )
+
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "✗ Required file missing: $file"
+            exit 1
+          fi
+        done
+
+        echo "✓ All required files present"
+
+    - name: Check required directories
+      run: |
+        echo "Checking required directories..."
+
+        required_dirs=(
+          "linux"
+          "tools"
+          "infra"
+          "misc"
+          "templates"
+        )
+
+        for dir in "${required_dirs[@]}"; do
+          if [ ! -d "$dir" ]; then
+            echo "✗ Required directory missing: $dir"
+            exit 1
+          fi
+        done
+
+        echo "✓ All required directories present"
+
+    - name: Check templates
+      run: |
+        echo "Checking templates..."
+
+        templates=(
+          "templates/tool.md"
+          "templates/k8s.md"
+          "templates/simple.md"
+        )
+
+        for template in "${templates[@]}"; do
+          if [ ! -f "$template" ]; then
+            echo "✗ Template missing: $template"
+            exit 1
+          fi
+        done
+
+        echo "✓ All templates present"
+
+    - name: Verify executables
+      run: |
+        echo "Checking executable permissions..."
+
+        if [ ! -x cs ]; then
+          echo "✗ cs is not executable"
+          exit 1
+        fi
+
+        if [ ! -x install.sh ]; then
+          echo "✗ install.sh is not executable"
+          exit 1
+        fi
+
+        echo "✓ All scripts have correct permissions"
+
+  documentation:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Check README completeness
+      run: |
+        echo "Checking README.md..."
+
+        required_sections=(
+          "Quick Start"
+          "Installation"
+          "Usage"
+          "Configuration"
+          "Contributing"
+        )
+
+        for section in "${required_sections[@]}"; do
+          if ! grep -q "$section" README.md; then
+            echo "⚠ Section might be missing: $section"
+          fi
+        done
+
+        # Check for code examples
+        if ! grep -q '```bash' README.md; then
+          echo "✗ No code examples found in README"
+          exit 1
+        fi
+
+        echo "✓ README.md validated"
+
+    - name: Check example configuration
+      run: |
+        echo "Checking .cs.config.example..."
+
+        required_configs=(
+          "EDITOR"
+          "AUTO_SYNC"
+          "DEFAULT_CATEGORY"
+        )
+
+        for config in "${required_configs[@]}"; do
+          if ! grep -q "$config" .cs.config.example; then
+            echo "✗ Config option missing: $config"
+            exit 1
+          fi
+        done
+
+        echo "✓ Example configuration validated"
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Check for hardcoded secrets
+      run: |
+        echo "Scanning for potential secrets..."
+
+        # Check for common secret patterns
+        if grep -r -E "(password|secret|token|api[_-]?key)" --include="*.sh" --include="*.md" . | grep -v "example" | grep -v "config.example"; then
+          echo "⚠ Potential secrets found (review above)"
+        fi
+
+        echo "✓ Security scan completed"
+
+    - name: Check gitignore
+      run: |
+        echo "Validating .gitignore..."
+
+        # Ensure sensitive files are ignored
+        required_ignores=(
+          "personal/"
+          ".cs.config"
+          ".cs_index"
+        )
+
+        for pattern in "${required_ignores[@]}"; do
+          if ! grep -q "$pattern" .gitignore; then
+            echo "✗ .gitignore missing pattern: $pattern"
+            exit 1
+          fi
+        done
+
+        echo "✓ .gitignore validated"

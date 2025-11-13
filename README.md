@@ -1,5 +1,10 @@
 # CheatSheets - Interactive Knowledge Base
 
+[![CI Tests](https://github.com/mlorentedev/cheat-sheets/workflows/CI%20Tests/badge.svg)](https://github.com/mlorentedev/cheat-sheets/actions)
+[![Quality Checks](https://github.com/mlorentedev/cheat-sheets/workflows/Quality%20Checks/badge.svg)](https://github.com/mlorentedev/cheat-sheets/actions)
+[![Multi-Platform](https://github.com/mlorentedev/cheat-sheets/workflows/Multi-Platform%20Tests/badge.svg)](https://github.com/mlorentedev/cheat-sheets/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Transform your scattered command knowledge into an organized, searchable personal reference system.
 
 A personal second brain for DevOps commands, configurations, and scripts. Built for engineers who value their time and want to capture knowledge as they discover it - in under 10 seconds.

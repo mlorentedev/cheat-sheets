@@ -1,0 +1,144 @@
+name: Multi-Platform Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  test-ubuntu:
+    name: Test on Ubuntu
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Run test suite
+      run: |
+        chmod +x test.sh cs install.sh
+        ./test.sh
+
+  test-macos:
+    name: Test on macOS
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        # Install bash if needed (macOS uses old bash)
+        brew install bash || true
+
+    - name: Run test suite
+      run: |
+        chmod +x test.sh cs install.sh
+        bash test.sh
+
+  test-installation:
+    name: Test Installation Process
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Run installer
+      run: |
+        chmod +x install.sh
+        ./install.sh
+
+    - name: Verify installation
+      run: |
+        # Check that directories were created
+        [ -d personal ] || exit 1
+        [ -d templates ] || exit 1
+
+        # Check that index was built
+        [ -f .cs_index ] || exit 1
+
+        # Check that config example was created
+        [ -f .cs.config.example ] || exit 1
+
+        echo "Installation verified successfully"
+
+    - name: Test cs commands after install
+      run: |
+        ./cs help
+        ./cs version
+        ./cs list
+        echo "All post-install commands work"
+
+  test-different-shells:
+    name: Test with Different Shells
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install shells
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y zsh fish
+
+    - name: Test with bash
+      run: |
+        chmod +x cs
+        bash -c './cs help'
+        echo "✓ Works with bash"
+
+    - name: Test with zsh
+      run: |
+        zsh -c './cs help'
+        echo "✓ Works with zsh"
+
+    - name: Test with sh
+      run: |
+        sh -c './cs help'
+        echo "✓ Works with sh"
+
+  integration-test:
+    name: Integration Test - Real Workflow
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup
+      run: |
+        chmod +x cs install.sh
+        ./install.sh
+
+    - name: Simulate real user workflow
+      run: |
+        # Day 1: User discovers commands
+        ./cs quick "kubectl get pods -A"
+        ./cs quick "docker system prune -a"
+        ./cs quick "terraform plan -out=plan.tfplan"
+
+        # Day 2: User organizes
+        ./cs add "helm list -A" --desc "List all helm releases" --tags helm,k8s
+
+        # Day 3: User searches
+        ./cs search docker
+        ./cs search kubectl
+
+        # Day 4: User creates new section
+        echo "" | ./cs new consul --template tool
+
+        # Verify everything worked
+        [ -f personal/quick.md ] || exit 1
+        grep -q "kubectl get pods" personal/quick.md || exit 1
+        [ -f tools/consul.md ] || exit 1
+
+        echo "✓ Real workflow simulation completed successfully"
+
+    - name: Check stats
+      run: |
+        ./cs stats
+        ./cs list

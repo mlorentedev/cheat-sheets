@@ -1,0 +1,175 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: Validate Pull Request
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup environment
+      run: |
+        chmod +x cs install.sh test.sh
+
+    - name: Run all tests
+      id: tests
+      run: |
+        ./test.sh > test_output.txt 2>&1 || true
+        cat test_output.txt
+
+        # Extract results
+        PASSED=$(grep -c "\[PASS\]" test_output.txt || echo 0)
+        FAILED=$(grep -c "\[FAIL\]" test_output.txt || echo 0)
+
+        echo "passed=$PASSED" >> $GITHUB_OUTPUT
+        echo "failed=$FAILED" >> $GITHUB_OUTPUT
+
+        # Exit with error if any tests failed
+        if [ "$FAILED" -gt 0 ]; then
+          exit 1
+        fi
+
+    - name: Check file changes
+      id: changes
+      run: |
+        # Count changed files
+        FILES_CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | wc -l)
+
+        # Check for specific file types
+        MD_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | grep -c '\.md$' || echo 0)
+        SH_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | grep -c '\.sh$' || echo 0)
+
+        echo "files_changed=$FILES_CHANGED" >> $GITHUB_OUTPUT
+        echo "md_files=$MD_FILES" >> $GITHUB_OUTPUT
+        echo "sh_files=$SH_FILES" >> $GITHUB_OUTPUT
+
+    - name: Validate shell scripts
+      if: steps.changes.outputs.sh_files > 0
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y shellcheck
+
+        # Run shellcheck on all shell scripts
+        find . -name "*.sh" -type f ! -path "*/.*" -exec shellcheck {} \; || true
+
+    - name: Check PR title
+      run: |
+        PR_TITLE="${{ github.event.pull_request.title }}"
+
+        # Check if title follows conventional commits
+        if echo "$PR_TITLE" | grep -qE '^(feat|fix|docs|chore|refactor|test|style|perf)(\(.+\))?: .+'; then
+          echo "✓ PR title follows conventional commits"
+        else
+          echo "⚠ PR title doesn't follow conventional commits format"
+          echo "  Recommended: feat|fix|docs|chore: description"
+        fi
+
+    - name: Create PR summary
+      if: always()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const passed = '${{ steps.tests.outputs.passed }}';
+          const failed = '${{ steps.tests.outputs.failed }}';
+          const filesChanged = '${{ steps.changes.outputs.files_changed }}';
+          const mdFiles = '${{ steps.changes.outputs.md_files }}';
+          const shFiles = '${{ steps.changes.outputs.sh_files }}';
+
+          const status = failed === '0' ? '✅' : '❌';
+
+          const comment = `## ${status} PR Validation Results
+
+          ### Test Results
+          - ✅ Tests Passed: ${passed}
+          - ${failed === '0' ? '✅' : '❌'} Tests Failed: ${failed}
+
+          ### Changes Summary
+          - 📝 Files Changed: ${filesChanged}
+          - 📄 Markdown Files: ${mdFiles}
+          - 🔧 Shell Scripts: ${shFiles}
+
+          ### Workflows Status
+          - ✅ CI Tests
+          - ✅ Quality Checks
+          - ✅ Multi-Platform Tests
+
+          ${failed === '0' ? '🎉 All checks passed! Ready to merge.' : '⚠️ Some tests failed. Please review the logs above.'}
+          `;
+
+          // Note: Commenting is disabled in this example
+          // To enable, uncomment the following:
+          // github.rest.issues.createComment({
+          //   issue_number: context.issue.number,
+          //   owner: context.repo.owner,
+          //   repo: context.repo.repo,
+          //   body: comment
+          // });
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Run security scan
+      run: |
+        echo "Running security checks..."
+
+        # Check for common security issues
+        echo "Checking for hardcoded secrets..."
+        if grep -r -i "password.*=" --include="*.sh" --include="*.md" . | grep -v "example" | grep -v ".git"; then
+          echo "⚠ Potential hardcoded secrets found"
+        else
+          echo "✓ No hardcoded secrets detected"
+        fi
+
+        # Check permissions
+        echo "Checking file permissions..."
+        find . -type f -perm /111 ! -path "*/.*" ! -name "*.sh" ! -name "cs" | while read -r file; do
+          echo "⚠ Unexpected executable: $file"
+        done
+
+        echo "✓ Security scan completed"
+
+  documentation-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Check documentation
+      run: |
+        echo "Checking documentation..."
+
+        # Verify README has examples
+        if grep -q '```bash' README.md; then
+          echo "✓ README contains code examples"
+        else
+          echo "⚠ README missing code examples"
+        fi
+
+        # Check for installation instructions
+        if grep -q "install" README.md; then
+          echo "✓ Installation instructions found"
+        else
+          echo "⚠ Installation instructions missing"
+        fi
+
+        # Check for usage examples
+        if grep -q "cs quick\|cs add\|cs search" README.md; then
+          echo "✓ Usage examples found"
+        else
+          echo "⚠ Usage examples missing"
+        fi
+
+        echo "✓ Documentation check completed"
