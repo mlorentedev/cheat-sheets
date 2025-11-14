@@ -4,9 +4,9 @@ This repository is my second brain where I store useful configurations, scripts,
 
 If you find any of these configurations useful, feel free to use them as a reference or adapt them for your own setup. And if you're searching for detailed explanations of each configuration, you're in the right place but checkout my [site](https://mlorente.dev).
 
-## 📑 Table of Contents
+## Table of Contents
 
-### 🐧 Linux Commands
+### Linux Commands
 
 Essential command-line utilities for Linux systems:
 
@@ -23,7 +23,7 @@ Essential command-line utilities for Linux systems:
 - [tar](linux/tar.md) - Archive and compression utility
 - [user](linux/user.md) - User management commands
 
-### 🛠️ Development Tools
+### Development Tools
 
 Essential tools for software development and DevOps:
 
@@ -40,7 +40,7 @@ Essential tools for software development and DevOps:
 - [vim](tools/vim.md) - Text editor
 - [wget](tools/wget.md) - Web content retriever
 
-### 🏗️ Infrastructure & Databases
+### Infrastructure & Databases
 
 Database management and infrastructure tools:
 
@@ -50,7 +50,7 @@ Database management and infrastructure tools:
 - [sqlite](infra/sqlite.md) - SQLite database management
 - [zfs](infra/zfs.md) - ZFS filesystem management
 
-### 🌐 Networking & Protocols
+### Networking & Protocols
 
 Network protocols and web-related reference materials:
 
@@ -59,7 +59,7 @@ Network protocols and web-related reference materials:
 - [smtp-codes](misc/smtp-codes.md) - SMTP response codes
 - [twisted-pair-cables](misc/twisted-pair-cables.md) - Network cable specifications
 
-### 🪟 Windows Tools
+### Windows Tools
 
 Windows-specific command-line tools and utilities:
 
